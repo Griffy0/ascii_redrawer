@@ -1,15 +1,16 @@
-import imageio as iio
+import imageio.v2 as iio
 import cv2
 import math
 from colorama import Fore
 from colorama import init
 import argparse
+import glob
+from random import choice
+import os
 
 def rgb_to_brightness(rgb):
     normalized_rgb = [x / 255 for x in rgb]
     return max(sum(normalized_rgb)/len(rgb)-0.1,0)
-
-
 
 def rgb_to_char(rgb):
     chars = [' ', '.', '*', '$', '#']
@@ -18,9 +19,7 @@ def rgb_to_char(rgb):
     index = math.ceil(brightness*num_chars)-1
     return chars[index]
 
-
 def get_distance_colour(colour1, colour2):
-    
     return sum([abs(int(x) - int(y)) for x, y in zip(colour1, colour2)])
 
 def rgb_to_colour(rgb):
@@ -44,7 +43,6 @@ def rgb_to_colour(rgb):
         Fore.CYAN,
         Fore.WHITE
         ]
-
     closest = 99999
     closest_index = 0
     for i, item in enumerate(codes):
@@ -54,24 +52,33 @@ def rgb_to_colour(rgb):
             closest_index = i
     return names[closest_index]
 
+def resize_img(img, width, height):
+    #find whether width or height is larger
+    img_height = img.shape[0]
+    img_width = img.shape[1]
+    aspect_ratio = img_width/img_height
+    intended_ratio = width/height
+    center_width = math.floor(img_width/2)
+    center_height = math.floor(img_height/2)
+    ratio_diff = intended_ratio/aspect_ratio
 
-def render_file(file, width, height):
+    if (ratio_diff<1):
+        #width too big
+        total_width  = img_width * (ratio_diff)
+        total_height = img_height
+    else:
+        #too high
+        total_width  = img_width
+        total_height = img_height/ratio_diff
+
+    half_width = math.floor(total_width/2)
+    half_height = math.floor(total_height/2)
+    cropped = img[center_height-half_height:center_height+half_height,center_width-half_width:center_width+half_width]
+    return cropped
+
+def print_img(img):
     out = []
-
-    img = iio.imread(file)
-    center = [x/2 for x in img.shape]
-    intended_ratio = 1
-    smallest = min(img.shape[0]*intended_ratio, img.shape[1])
-    print(img.shape)
-    cropped = img[0:smallest, 0:smallest]   
-    resized = cv2.resize(cropped, (width, height))
-
-    init()
-
-    print(rgb_to_colour([98, 152, 172])+'asd')
-
-
-    for i in resized:
+    for i in img:
         for j in i:
             out.append(rgb_to_colour(j)+rgb_to_char(j))
         out.append('\n')
@@ -79,6 +86,24 @@ def render_file(file, width, height):
     out_str = ''.join(out)
     print(out_str)
     print(Fore.WHITE)
+
+def render_file(file, width, height):
+
+    if file == 'random':
+        files = glob.glob((f'{os.path.dirname(__file__)}/*.png'))
+        file = choice(files)
+
+    img = iio.imread(file)
+    text_height = 1.5
+    cropped = resize_img(img, width, round(height*text_height))
+    resized = cv2.resize(cropped, (width, int(height/text_height)))
+
+    print_img(resized)    
+
+    init()
+    #cv2.imshow('image',cropped)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
 
 parser = argparse.ArgumentParser()
