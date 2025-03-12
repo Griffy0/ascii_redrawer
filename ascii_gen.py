@@ -7,35 +7,20 @@ import argparse
 import glob
 from random import choice
 import os
-from line_profiler import profile
 
 def rgb_to_brightness(rgb):
-    normalized_rgb = [x / 255 for x in rgb]
-    return max(sum(normalized_rgb)/len(rgb)-0.1,0)
+    avg = sum(rgb)/3
+    normalized_rgb = int(avg / 51-0.5)
+    return max(normalized_rgb,0)
 
-@profile
-def rgb_to_char(rgb):
-    chars = [' ', '.', '*', '$', '#']
-    num_chars = len(chars)
+def rgb_to_char(rgb,chars):
     brightness = rgb_to_brightness(rgb)
-    index = math.ceil(brightness*num_chars)-1
-    return chars[index]
+    return chars[brightness]
 
-@profile
-def get_distance_colour(colour1, colour2):
-    return sum([abs(int(x) - int(y)) for x, y in zip(colour1, colour2)])
+def rgb_to_colour(rgb):
+    normalized_rgb = [int(x / 51) for x in rgb]
+    return f"\x1b[38;5;{16 + 36 * normalized_rgb[0] + 6 * normalized_rgb[1] + normalized_rgb[2]}m"
 
-@profile
-def rgb_to_colour(rgb, codes, names):
-    #return f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m"
-    closest = 2000
-    closest_index = 0
-    for i, item in enumerate(codes):
-        distance = get_distance_colour(rgb, item)
-        if distance < closest:
-            closest = distance
-            closest_index = i
-    return names[closest_index]
 
 def resize_img(img, width, height):
     #find whether width or height is larger
@@ -61,33 +46,13 @@ def resize_img(img, width, height):
     cropped = img[center_height-half_height:center_height+half_height,center_width-half_width:center_width+half_width]
     return cropped
 
-@profile
 def print_img(img):
-    codes = [
-        [-40,  -40,  -40], 
-        [255,0,  0], 
-        [0,  255,0], 
-        [255,255,0], 
-        [0,  0,  255],
-        [255,0,  255], 
-        [0,  255,255],
-        [255,255,255]   
-    ]
-    names = [
-        Fore.BLACK,
-        Fore.RED,
-        Fore.GREEN,
-        Fore.YELLOW,
-        Fore.BLUE,
-        Fore.MAGENTA,
-        Fore.CYAN,
-        Fore.WHITE
-        ]
+    chars = [' ', '.', '*', '$', '#']
     out = []
     for i in img:
         for j in i:
-            col = rgb_to_colour(j, codes, names)
-            char = rgb_to_char(j)
+            col = rgb_to_colour(j)
+            char = rgb_to_char(j, chars)
             out.append(col+char)
         out.append('\n')
 
@@ -109,10 +74,6 @@ def render_file(file, width, height):
     print_img(resized)    
 
     init()
-    #cv2.imshow('image',cropped)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
-
 
 parser = argparse.ArgumentParser()
 
