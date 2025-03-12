@@ -7,11 +7,13 @@ import argparse
 import glob
 from random import choice
 import os
+from line_profiler import profile
 
 def rgb_to_brightness(rgb):
     normalized_rgb = [x / 255 for x in rgb]
     return max(sum(normalized_rgb)/len(rgb)-0.1,0)
 
+@profile
 def rgb_to_char(rgb):
     chars = [' ', '.', '*', '$', '#']
     num_chars = len(chars)
@@ -19,31 +21,14 @@ def rgb_to_char(rgb):
     index = math.ceil(brightness*num_chars)-1
     return chars[index]
 
+@profile
 def get_distance_colour(colour1, colour2):
     return sum([abs(int(x) - int(y)) for x, y in zip(colour1, colour2)])
 
-def rgb_to_colour(rgb):
-    codes = [
-        [-40,  -40,  -40], 
-        [255,0,  0], 
-        [0,  255,0], 
-        [255,255,0], 
-        [0,  0,  255],
-        [255,0,  255], 
-        [0,  255,255],
-        [255,255,255]   
-    ]
-    names = [
-        Fore.BLACK,
-        Fore.RED,
-        Fore.GREEN,
-        Fore.YELLOW,
-        Fore.BLUE,
-        Fore.MAGENTA,
-        Fore.CYAN,
-        Fore.WHITE
-        ]
-    closest = 99999
+@profile
+def rgb_to_colour(rgb, codes, names):
+    #return f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m"
+    closest = 2000
     closest_index = 0
     for i, item in enumerate(codes):
         distance = get_distance_colour(rgb, item)
@@ -76,11 +61,34 @@ def resize_img(img, width, height):
     cropped = img[center_height-half_height:center_height+half_height,center_width-half_width:center_width+half_width]
     return cropped
 
+@profile
 def print_img(img):
+    codes = [
+        [-40,  -40,  -40], 
+        [255,0,  0], 
+        [0,  255,0], 
+        [255,255,0], 
+        [0,  0,  255],
+        [255,0,  255], 
+        [0,  255,255],
+        [255,255,255]   
+    ]
+    names = [
+        Fore.BLACK,
+        Fore.RED,
+        Fore.GREEN,
+        Fore.YELLOW,
+        Fore.BLUE,
+        Fore.MAGENTA,
+        Fore.CYAN,
+        Fore.WHITE
+        ]
     out = []
     for i in img:
         for j in i:
-            out.append(rgb_to_colour(j)+rgb_to_char(j))
+            col = rgb_to_colour(j, codes, names)
+            char = rgb_to_char(j)
+            out.append(col+char)
         out.append('\n')
 
     out_str = ''.join(out)
